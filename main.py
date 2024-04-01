@@ -1,7 +1,7 @@
 import os
 from openpyxl import Workbook
 
-file_name = 'PYT1-1.TXT'  # название файла
+file_name = 'example.txt'  # название файла
 
 crane_type = 1
 # 1 - мостовой
@@ -127,6 +127,11 @@ slXZ_K, slXZ_B = getKBbyTwoDots(d3[0], d4[2], d3[0], d4[2])  # вторая пр
 heightened_flXZ_B = flXZ_B + BRIDGE_H  # поднимаем прямую на H
 heightened_slXZ_B = slXZ_B + BRIDGE_H  # поднимаем прямую на H
 
+print(line1_A, line1_B, line1_C)
+print(line2_A, line2_B, line2_C)
+# 22.386 + 0.145
+# 22.522 - 22.377
+
 
 def first_H_line_func(x):  # функция первой прямой, поднятной на H
     return flXZ_K * x + heightened_flXZ_B
@@ -217,42 +222,22 @@ for i in range(lendots):
     next_empty_line += 1
 
     # ПРОВЕРКА ОТКЛОНЕНИЯ 3
-    if crane_type == 1 and abs(
-            BRIDGE_S - abs(dots_first[i][1] - dots_second[i][1])) > BRIDGE_CRANE_3_MULTIPLIER * BRIDGE_S:
-        print(
-            f'ОТКЛОНЕНИЕ 3 НА {line1_index + 1}-{line2_index + 1}: разница между отметками {abs(dots_first[i][1] - dots_second[i][1])}, при необходимом {BRIDGE_S}; допустимое отклонение {BRIDGE_CRANE_3_MULTIPLIER * BRIDGE_S}')
-        xwrite('A', next_empty_line,
-               '3. Сужение или расширение колеи рельсового пути', True)
-        xwrite('A', next_empty_line, 'Разница между отметками')
-        xwrite('B', next_empty_line, 'Необходимая разница')
-        xwrite('C', next_empty_line, 'Допустимое отклонение', True)
-        xwrite('A', next_empty_line, f'{abs(dots_first[i][1] - dots_second[i][1])}')  # TODO минус и плюс
-        xwrite('B', next_empty_line, f'{BRIDGE_S}')
-        xwrite('C', next_empty_line, f'{BRIDGE_CRANE_3_MULTIPLIER * BRIDGE_S}', True)
-    if crane_type == 2 and abs(
-            dots_first[i][1] - dots_second[i][1]) > TOWER_CRANE_3:  # TODO: BUG 221, 214, WHY BRIDGE_S?
-        print(
-            f'ОТКЛОНЕНИЕ 3 НА {line1_index + 1}-{line2_index + 1}: разница между отметками {abs(dots_first[i][1] - dots_second[i][1])}, при необходимом {BRIDGE_S}; допустимое отклонение {TOWER_CRANE_3}')
-        xwrite('A', next_empty_line,
-               '3. Сужение или расширение колеи рельсового пути', True)
-        xwrite('A', next_empty_line, 'Разница между отметками')
-        xwrite('B', next_empty_line, 'Необходимая разница')
-        xwrite('C', next_empty_line, 'Допустимое отклонение', True)
-        xwrite('A', next_empty_line, f'{abs(dots_first[i][1] - dots_second[i][1])}')  # TODO минус и плюс
-        xwrite('B', next_empty_line, f'{BRIDGE_S}')
-        xwrite('C', next_empty_line, f'{TOWER_CRANE_3}', True)
-    if crane_type == 3 and abs(dots_first[i][1] - dots_second[i][1]) > GANTRY_CRANE_3:  # TODO: 225, WHY BRIDGE_S?
-        print(
-            f'ОТКЛОНЕНИЕ 3 НА {line1_index + 1}-{line2_index + 1}: разница между отметками {abs(dots_first[i][1] - dots_second[i][1])}, при необходимом {BRIDGE_S}; допустимое отклонение {GANTRY_CRANE_3}')
-        xwrite('A', next_empty_line,
-               '3. Сужение или расширение колеи рельсового пути', True)
-        xwrite('A', next_empty_line, 'Разница между отметками')
-        xwrite('B', next_empty_line, 'Необходимая разница')
-        xwrite('C', next_empty_line, 'Допустимое отклонение', True)
-        xwrite('A', next_empty_line, f'{abs(dots_first[i][1] - dots_second[i][1])}')  # TODO минус и плюс
-        xwrite('B', next_empty_line, f'{BRIDGE_S}')
-        xwrite('C', next_empty_line, f'{GANTRY_CRANE_3}', True)
+    dist1 = point_to_line_distance(line2_A, line2_B, line2_C, dots_first[i][0], dots_first[i][1])
+    dist2 = point_to_line_distance(line2_A, line2_B, line2_C, dots_second[i][0], dots_second[i][1])
+    dist = 0
 
+    # d3, d4, dots_second[i]
+    D = (dots_second[i][0] - d3[0]) * (d4[1] - d3[1]) - (dots_second[i][1] - d3[1]) * (d4[0] - d3[0])
+    if D < 0:
+        dist = dist1 + dist2
+    elif D > 0:
+        dist = dist1 - dist2
+    else:
+        dist = dist1
+
+    xwrite('A', next_empty_line, 'СУЖЕНИЕ И РАСШИРЕНИЕ', True)
+    xwrite('A', next_empty_line, f'{line1_index + 1}-{line2_index + 1}')
+    xwrite('B', next_empty_line, f'{dist}', True)
 
     next_empty_line += 1
     print(
@@ -307,3 +292,13 @@ workbook.save(filename=file_name + '.xlsx')
 
 # поднять 1 и 2 точку на h, и оттуда считать отклонение по z
 # соседние точки по z найти разницу
+
+
+'''
+точка слева или справа от прямой
+Определяется так. Предположим, у нас есть 3 точки: А(х1,у1), Б(х2,у2), С(х3,у3). Через точки А и Б проведена прямая. И нам надо определить, как расположена точка С относительно прямой АБ. Для этого вычисляем значение:
+D = (х3 - х1) * (у2 - у1) - (у3 - у1) * (х2 - х1)
+- Если D = 0 - значит, точка С лежит на прямой АБ.
+- Если D < 0 - значит, точка С лежит слева от прямой.
+- Если D > 0 - значит, точка С лежит справа от прямой.
+'''
